@@ -1,0 +1,40 @@
+import pandas as pd
+import plotly.express as px
+
+# 1. Load your manually cleaned data
+df = pd.read_excel('stats.xlsx')
+
+# 2. Convert text to numbers
+# Since the headers are clean, we can target them directly
+cols_to_fix = ['Gls', 'Ast', 'Min']
+for col in cols_to_fix:
+    df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+
+# 3. Calculate the Metric (Production per 90 minutes)
+# We add 1 to Min to avoid dividing by zero if a player has 0 minutes
+df['G_A_per_90'] = ((df['Gls'] + df['Ast']) / (df['Min'] + 1)) * 90
+
+# 4. Filter for players with at least 500 minutes
+# This removes "flukes" (players who scored once in 10 minutes)
+df_final = df[df['Min'] > 500].copy()
+
+fig = px.scatter(
+    df_final, 
+    x="Min", 
+    y="G_A_per_90", 
+    hover_name="Player",
+    # We remove 'text' here to stop the names from overlapping
+    title="Premier League 25/26: Goals + Assists Efficiency",
+    labels={"Min": "Total Minutes Played", "G_A_per_90": "Goals + Assists per 90"},
+    color="G_A_per_90", # This adds a cool color heat-map
+    color_continuous_scale="Viridis",
+    template="plotly_dark"
+)
+
+# 6. Add a "Mean" line so we can see who is above average
+fig.add_hline(y=df_final['G_A_per_90'].mean(), line_dash="dot", 
+              annotation_text="League Average", annotation_position="bottom right")
+
+# 7. Save and open
+fig.write_html("scout_report_clean.html")
+fig.show()
